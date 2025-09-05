@@ -1,0 +1,182 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Build artifacts
+build/
+dist/
+bin/
+main
+marketplace-app
+
+# Docker
+.dockerignore
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Cache directories
+.cache/
+node_modules/
+
+# SSL certificates (if any)
+*.pem
+*.key
+*.crt
+*.p12
+ssl/
+certs/
+
+# Backup files
+*.bak
+*.backup
+
+# Configuration files with secrets
+config/secrets.yaml
+config/production.yaml
+secrets/
+
+# Test coverage
+profile.cov
+coverage.txt
+coverage.html
+
+# Air live reload
+.air.toml
+tmp/
+
+# Local development
+.local/
+local/
+
+# Documentation build
+docs/_build/
+
+# Profiling
+*.prof
+*.pprof
+
+# Memory dumps
+*.hprof
+
+# Railway
+.railway/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Kubernetes
+*.kubeconfig
+
+# Monitoring
+prometheus_data/
+grafana_data/
+
+# Vendor (if using)
+vendor/
+
+# Go modules download cache
+$GOPATH/pkg/mod/
+
+# Generated files
+*.pb.go
+*_gen.go
+mocks/
+
+# Local scripts
+scripts/local_*
+scripts/dev_*
+
+# Performance test results
+benchmarks/
+load_test_results/
+
+# Security scan results
+security_reports/
+
+# Local database dumps
+*.sql.gz
+*.dump
+
+# Local Redis dumps
+dump.rdb
+
+# Local development overrides
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Migration files (if auto-generated)
+migrations/auto_*
+
+# API documentation (if auto-generated)
+api_docs/
+swagger.json
+swagger.yaml
+
+# Local configuration overrides
+config.local.yaml
+settings.local.json
