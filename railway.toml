@@ -12,10 +12,7 @@ restartPolicyMaxRetries = 3
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 
-# Service configuration
-[[services]]
-name = "directory-engine-api"
-type = "web"
+# Service configuration will be handled by Railway automatically
 
 # Environment variables
 [deploy.env]
@@ -54,6 +51,12 @@ JWT_EXPIRATION = "3600"
 # NANGO_CLIENT_SECRET = "your_nango_client_secret"
 # NANGO_WEBHOOK_SECRET = "your_nango_webhook_secret"
 # NANGO_API_KEY = "your_nango_api_key"
+
+# GoHighLevel OAuth Configuration (set these in Railway dashboard)
+# GOHIGHLEVEL_CLIENT_ID = "your_gohighlevel_client_id"
+# GOHIGHLEVEL_CLIENT_SECRET = "your_gohighlevel_client_secret"
+GOHIGHLEVEL_REDIRECT_URI = "https://api.engageautomations.com/api/v1/auth/gohighlevel/callback"
+GOHIGHLEVEL_BASE_URL = "https://marketplace.gohighlevel.com/oauth/chooselocation"
 
 # Rate Limiting
 RATE_LIMIT_REQUESTS = "1000"
@@ -96,13 +99,5 @@ SHUTDOWN_TIMEOUT = "30s"
 METRICS_ENABLED = "true"
 HEALTH_CHECK_ENABLED = "true"
 
-[services]
-# PostgreSQL service
-[services.database]
-type = "postgresql"
-version = "15"
-
-# Redis service
-[services.redis]
-type = "redis"
-version = "7"
+# Services will be managed through Railway dashboard
+# PostgreSQL and Redis can be added via Railway CLI or dashboard

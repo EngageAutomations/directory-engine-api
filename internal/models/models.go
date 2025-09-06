@@ -20,8 +20,8 @@ type Company struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 
-	// Relationships
-	Locations []Location `gorm:"foreignKey:CompanyID;references:ID" json:"locations,omitempty"`
+	// Relationships (loaded separately to avoid circular dependencies during migration)
+	Locations []Location `gorm:"-" json:"locations,omitempty"`
 }
 
 // Location represents a business location
@@ -45,10 +45,10 @@ type Location struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
 
-	// Relationships
-	Company  Company   `gorm:"foreignKey:CompanyID;references:ID" json:"company,omitempty"`
-	Contacts []Contact `gorm:"foreignKey:LocationID;references:ID" json:"contacts,omitempty"`
-	Products []Product `gorm:"foreignKey:LocationID;references:ID" json:"products,omitempty"`
+	// Relationships (loaded separately to avoid circular dependencies during migration)
+	Company  Company   `gorm:"-" json:"company,omitempty"`
+	Contacts []Contact `gorm:"-" json:"contacts,omitempty"`
+	Products []Product `gorm:"-" json:"products,omitempty"`
 }
 
 // Contact represents business contact information
@@ -66,8 +66,8 @@ type Contact struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
 
-	// Relationships
-	Location Location `gorm:"foreignKey:LocationID;references:ID" json:"location,omitempty"`
+	// Relationships (loaded separately to avoid circular dependencies during migration)
+	Location Location `gorm:"-" json:"location,omitempty"`
 }
 
 // Product represents products/services offered by a business
@@ -85,8 +85,8 @@ type Product struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 
-	// Relationships
-	Location Location `gorm:"foreignKey:LocationID;references:ID" json:"location,omitempty"`
+	// Relationships (loaded separately to avoid circular dependencies during migration)
+	Location Location `gorm:"-" json:"location,omitempty"`
 }
 
 // TokenRefresh represents token refresh tracking
@@ -101,6 +101,6 @@ type TokenRefresh struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 
-	// Relationships
-	Company Company `gorm:"foreignKey:CompanyID;references:ID" json:"company,omitempty"`
+	// Relationships (loaded separately to avoid circular dependencies during migration)
+	Company Company `gorm:"-" json:"company,omitempty"`
 }

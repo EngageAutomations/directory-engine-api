@@ -8,7 +8,6 @@ import (
 	"github.com/joho/godotenv"
 	"marketplace-app/internal/api"
 	"marketplace-app/internal/config"
-	"marketplace-app/internal/database"
 	"marketplace-app/internal/services"
 )
 
@@ -21,20 +20,15 @@ func main() {
 	// Initialize configuration
 	cfg := config.Load()
 
-	// Initialize database
-	db, err := database.Initialize(cfg.DatabaseURL)
-	if err != nil {
-		log.Fatal("Failed to initialize database:", err)
-	}
-
-	// Initialize services
-	services := services.NewServices(db, cfg)
+	// Skip database initialization for testing
+	// Initialize services without database
+	services := services.NewServicesWithoutDB(cfg)
 
 	// Initialize router
 	router := gin.Default()
 
 	// Setup API routes
-	api.SetupRoutes(router, services, cfg)
+	api.SetupRoutes(router, services)
 
 	// Start server
 	port := os.Getenv("PORT")
@@ -42,7 +36,7 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("Server starting on port %s", port)
+	log.Printf("Test server starting on port %s (without database)", port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

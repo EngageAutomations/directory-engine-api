@@ -72,12 +72,17 @@ type NangoTokenRefreshResponse struct {
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 
-func NewNangoService(db *gorm.DB, config *config.Config) *NangoService {
+func NewNangoService(db *gorm.DB, cfg *config.Config) *NangoService {
 	return &NangoService{
 		db:     db,
-		config: config,
+		config: cfg,
 		client: &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+// GetPublicKey returns the Nango public key from config
+func (n *NangoService) GetPublicKey() string {
+	return n.config.NangoPublicKey
 }
 
 // ProcessOAuthCallback handles the OAuth callback from Nango

@@ -49,17 +49,26 @@ func runMigrations(db *gorm.DB) error {
 		log.Printf("Warning: Could not create uuid-ossp extension: %v", err)
 	}
 
-	// Auto-migrate all models
-	err := db.AutoMigrate(
-		&models.Company{},
-		&models.Location{},
-		&models.Contact{},
-		&models.Product{},
-		&models.TokenRefresh{},
-	)
+	// Migrate tables individually in dependency order
+	if err := db.AutoMigrate(&models.Company{}); err != nil {
+		return fmt.Errorf("failed to migrate companies table: %w", err)
+	}
 
-	if err != nil {
-		return fmt.Errorf("auto-migration failed: %w", err)
+	if err := db.AutoMigrate(&models.Location{}); err != nil {
+		return fmt.Errorf("failed to migrate locations table: %w", err)
+	}
+
+	if err := db.AutoMigrate(&models.TokenRefresh{}); err != nil {
+		return fmt.Errorf("failed to migrate token_refreshes table: %w", err)
+	}
+
+	// Now migrate tables with foreign keys
+	if err := db.AutoMigrate(&models.Contact{}); err != nil {
+		return fmt.Errorf("failed to migrate contacts table: %w", err)
+	}
+
+	if err := db.AutoMigrate(&models.Product{}); err != nil {
+		return fmt.Errorf("failed to migrate products table: %w", err)
 	}
 
 	// Create indexes for better performance

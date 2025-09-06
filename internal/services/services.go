@@ -36,6 +36,20 @@ func NewServices(db *gorm.DB, cfg *config.Config) *Services {
 	}
 }
 
+// NewServicesWithoutDB creates services without database dependency (for testing)
+func NewServicesWithoutDB(cfg *config.Config) *Services {
+	// Initialize only cache service for OAuth URL generation
+	cacheService := NewCacheService(cfg)
+
+	return &Services{
+		Nango:     nil,
+		Business:  nil,
+		Token:     nil,
+		Cache:     cacheService,
+		Scheduler: nil,
+	}
+}
+
 // Start initializes background services
 func (s *Services) Start() error {
 	// Start the token refresh scheduler

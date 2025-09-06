@@ -9,28 +9,30 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"marketplace-app/internal/config"
 	"marketplace-app/internal/services"
 )
 
 type AuthHandler struct {
 	services *services.Services
+	config   *config.Config
 }
 
-func NewAuthHandler(services *services.Services) *AuthHandler {
+func NewAuthHandler(services *services.Services, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
 		services: services,
+		config:   cfg,
 	}
 }
 
 // GetAuthURL generates Nango OAuth URL for company authorization
 func (h *AuthHandler) GetAuthURL(c *gin.Context) {
-	var req struct {
-		CompanyID   string `json:"company_id" binding:"required"`
-		RedirectURL string `json:"redirect_url"`
-	}
+	// Get parameters from query string
+	companyID := c.Query("company_id")
+	redirectURL := c.Query("redirect_url")
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if companyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "company_id is required"})
 		return
 	}
 
@@ -39,17 +41,23 @@ func (h *AuthHandler) GetAuthURL(c *gin.Context) {
 
 	// Store state in cache for validation (expires in 10 minutes)
 	stateKey := fmt.Sprintf("oauth_state:%s", state)
-	h.services.Cache.Set(stateKey, req.CompanyID, 10*time.Minute)
+	h.services.Cache.Set(stateKey, companyID, 10*time.Minute)
+
+	// Use default redirect URI if not provided
+	redirectURI := redirectURL
+	if redirectURI == "" {
+		redirectURI = "https://api.engageautomations.com/api/v1/auth/oauth/callback"
+	}
 
 	// Build Nango OAuth URL
 	baseURL := "https://api.nango.dev/oauth/authorize"
 	params := url.Values{
 		"response_type": {"code"},
-		"client_id":     {"your-nango-client-id"}, // Should come from config
-		"redirect_uri":  {req.RedirectURL},
+		"client_id":     {h.services.Nango.GetPublicKey()},
+		"redirect_uri":  {redirectURI},
 		"scope":         {"read write"},
 		"state":         {state},
-		"company_id":    {req.CompanyID},
+		"company_id":    {companyID},
 	}
 
 	authURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
@@ -58,6 +66,110 @@ func (h *AuthHandler) GetAuthURL(c *gin.Context) {
 		"auth_url": authURL,
 		"state":    state,
 		"expires_at": time.Now().Add(10 * time.Minute).Unix(),
+	})
+}
+
+// GetGoHighLevelAuthURL generates direct GoHighLevel OAuth URL
+func (h *AuthHandler) GetGoHighLevelAuthURL(c *gin.Context) {
+	// Get parameters from query string
+	companyID := c.Query("company_id")
+	redirectURL := c.Query("redirect_url")
+
+	if companyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "company_id is required"})
+		return
+	}
+
+	// Generate state parameter for security
+	state := uuid.New().String()
+
+	// Store state and company_id in cache for validation (expires in 10 minutes)
+	stateKey := fmt.Sprintf("ghl_oauth_state:%s", state)
+	h.services.Cache.Set(stateKey, companyID, 10*time.Minute)
+
+	// Use default redirect URI if not provided
+	redirectURI := redirectURL
+	if redirectURI == "" {
+		redirectURI = h.config.GoHighLevelRedirectURI
+	}
+
+	// Build GoHighLevel OAuth URL
+	baseURL := h.config.GoHighLevelBaseURL
+	params := url.Values{
+		"response_type": {"code"},
+		"client_id":     {h.config.GoHighLevelClientID},
+		"redirect_uri":  {redirectURI},
+		"scope":         {"locations.readonly contacts.readonly"},
+		"state":         {state},
+	}
+
+	authURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+
+	c.JSON(http.StatusOK, gin.H{
+		"auth_url": authURL,
+		"state":    state,
+		"expires_at": time.Now().Add(10 * time.Minute).Unix(),
+	})
+}
+
+// HandleGoHighLevelCallback processes the OAuth callback from GoHighLevel
+func (h *AuthHandler) HandleGoHighLevelCallback(c *gin.Context) {
+	code := c.Query("code")
+	state := c.Query("state")
+	error := c.Query("error")
+
+	// Check for OAuth errors
+	if error != "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "OAuth authorization failed",
+			"details": error,
+		})
+		return
+	}
+
+	// Validate required parameters
+	if code == "" || state == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Missing code or state parameter",
+		})
+		return
+	}
+
+	// Validate state parameter
+	stateKey := fmt.Sprintf("ghl_oauth_state:%s", state)
+	cachedValue := h.services.Cache.Get(stateKey)
+	if cachedValue == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid or expired state parameter",
+		})
+		return
+	}
+
+	// Get company ID from cached state
+	var companyID string
+	switch v := cachedValue.(type) {
+	case string:
+		companyID = v
+	case []byte:
+		companyID = string(v)
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Invalid state data format",
+		})
+		return
+	}
+
+	// Clean up used state
+	h.services.Cache.Delete(stateKey)
+
+	// TODO: Exchange code for access token with GoHighLevel
+	// This would involve making a POST request to GoHighLevel's token endpoint
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "OAuth callback received successfully",
+		"company_id": companyID,
+		"code": code,
+		"status": "ready_for_token_exchange",
 	})
 }
 
@@ -89,10 +201,20 @@ func (h *AuthHandler) HandleOAuthCallback(c *gin.Context) {
 		return
 	}
 
-	companyID, ok := cachedCompanyID.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid state data"})
-		return
+	// Handle different types that might be returned from cache
+	var companyID string
+	switch v := cachedCompanyID.(type) {
+	case string:
+		companyID = v
+	case []byte:
+		companyID = string(v)
+	default:
+		// Try to convert to string
+		companyID = fmt.Sprintf("%v", v)
+		if companyID == "" || companyID == "<nil>" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid state data"})
+			return
+		}
 	}
 
 	// Process OAuth callback with Nango service

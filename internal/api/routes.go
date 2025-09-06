@@ -7,11 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"marketplace-app/internal/api/handlers"
 	"marketplace-app/internal/api/middleware"
+	"marketplace-app/internal/config"
 	"marketplace-app/internal/services"
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes(router *gin.Engine, services *services.Services) {
+func SetupRoutes(router *gin.Engine, services *services.Services, cfg *config.Config) {
 	// Setup CORS
 	setupCORS(router)
 
@@ -19,13 +20,16 @@ func SetupRoutes(router *gin.Engine, services *services.Services) {
 	setupMiddleware(router, services)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(services)
+	authHandler := handlers.NewAuthHandler(services, cfg)
 	businessHandler := handlers.NewBusinessHandler(services)
 	// TODO: Implement TokenHandler
 	// tokenHandler := handlers.NewTokenHandler(services)
 	adminHandler := handlers.NewAdminHandler(services)
 	healthHandler := handlers.NewHealthHandler(services)
 	webhookHandler := handlers.NewWebhookHandler(services)
+
+	// Root-level health endpoint for Railway health checks
+	router.GET("/health", healthHandler.BasicHealth)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -37,9 +41,14 @@ func SetupRoutes(router *gin.Engine, services *services.Services) {
 		// Authentication routes
 		auth := v1.Group("/auth")
 		{
+			// Nango OAuth routes
 			auth.GET("/oauth/callback", authHandler.HandleOAuthCallback)
 			auth.POST("/oauth/exchange", authHandler.ExchangeToken)
 			auth.GET("/oauth/url", authHandler.GetAuthURL)
+			
+			// Direct GoHighLevel OAuth routes
+			auth.GET("/gohighlevel/callback", authHandler.HandleGoHighLevelCallback)
+			auth.GET("/gohighlevel/url", authHandler.GetGoHighLevelAuthURL)
 		}
 
 		// Protected routes (require authentication)

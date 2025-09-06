@@ -15,6 +15,11 @@ type Config struct {
 	RateLimitRPS    int
 	CacheExpiration int // in minutes
 	LogLevel        string
+	// GoHighLevel OAuth Configuration
+	GoHighLevelClientID     string
+	GoHighLevelClientSecret string
+	GoHighLevelRedirectURI  string
+	GoHighLevelBaseURL      string
 }
 
 func Load() *Config {
@@ -31,6 +36,11 @@ func Load() *Config {
 		RateLimitRPS:    rateLimitRPS,
 		CacheExpiration: cacheExpiration,
 		LogLevel:        getEnv("LOG_LEVEL", "info"),
+		// GoHighLevel OAuth Configuration
+		GoHighLevelClientID:     getEnv("GOHIGHLEVEL_CLIENT_ID", ""),
+		GoHighLevelClientSecret: getEnv("GOHIGHLEVEL_CLIENT_SECRET", ""),
+		GoHighLevelRedirectURI:  getEnv("GOHIGHLEVEL_REDIRECT_URI", "https://api.engageautomations.com/api/v1/auth/gohighlevel/callback"),
+		GoHighLevelBaseURL:      getEnv("GOHIGHLEVEL_BASE_URL", "https://marketplace.leadconnectorhq.com/oauth/chooselocation"),
 	}
 }
 
