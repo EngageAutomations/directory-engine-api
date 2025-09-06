@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -162,14 +164,34 @@ func (h *AuthHandler) HandleGoHighLevelCallback(c *gin.Context) {
 	// Clean up used state
 	h.services.Cache.Delete(stateKey)
 
-	// TODO: Exchange code for access token with GoHighLevel
-	// This would involve making a POST request to GoHighLevel's token endpoint
+	// Exchange code for access token with GoHighLevel
+	tokenResp, err := h.exchangeGoHighLevelToken(code, c.Query("redirect_uri"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to exchange authorization code for token",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Generate JWT token for the company
+	jwtToken, err := h.generateJWTToken(companyID, tokenResp.AccessToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to generate access token",
+			"details": err.Error(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "OAuth callback received successfully",
+		"message": "OAuth callback processed successfully",
 		"company_id": companyID,
-		"code": code,
-		"status": "ready_for_token_exchange",
+		"access_token": jwtToken,
+		"token_type": "Bearer",
+		"expires_in": 3600,
+		"location_id": tokenResp.LocationID,
+		"user_type": tokenResp.UserType,
 	})
 }
 
@@ -397,4 +419,61 @@ func (h *AuthHandler) generateJWTToken(companyID, companyToken string) (string, 
 	}
 
 	return tokenString, nil
+}
+
+// GoHighLevelTokenResponse represents the response from GoHighLevel token exchange
+type GoHighLevelTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	Scope        string `json:"scope"`
+	LocationID   string `json:"locationId"`
+	UserType     string `json:"userType"`
+	CompanyID    string `json:"companyId"`
+}
+
+// exchangeGoHighLevelToken exchanges authorization code for access token
+func (h *AuthHandler) exchangeGoHighLevelToken(code, redirectURI string) (*GoHighLevelTokenResponse, error) {
+	// Use configured redirect URI if not provided
+	if redirectURI == "" {
+		redirectURI = h.config.GoHighLevelRedirectURI
+	}
+
+	// Prepare token exchange request
+	tokenURL := "https://services.leadconnectorhq.com/oauth/token"
+	data := url.Values{
+		"client_id":     {h.config.GoHighLevelClientID},
+		"client_secret": {h.config.GoHighLevelClientSecret},
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"redirect_uri":  {redirectURI},
+		"user_type":     {"Company"}, // Default to Company, could be Location
+	}
+
+	// Make POST request
+	resp, err := http.PostForm(tokenURL, data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make token request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Check for HTTP errors
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token exchange failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse JSON response
+	var tokenResp GoHighLevelTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to parse token response: %w", err)
+	}
+
+	return &tokenResp, nil
 }
